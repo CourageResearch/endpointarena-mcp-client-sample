@@ -1,7 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { URL } from 'node:url'
 import { AutonomousTrader } from './autonomousTrader.js'
-import { loadConfig, publicConfig } from './config.js'
+import { loadConfig, publicConfig, withApiKeyOverride } from './config.js'
 import { publicErrorPayload } from './errors.js'
 import { renderHome } from './html.js'
 import {
@@ -16,6 +16,17 @@ import { parseSubmitBody, parseTradeBody } from './safety.js'
 
 const config = loadConfig()
 const autonomousTrader = new AutonomousTrader(config)
+
+function extractRequestApiKey(request: IncomingMessage): string | null {
+  const explicit = request.headers['x-endpoint-arena-api-key']
+  const explicitValue = Array.isArray(explicit) ? explicit[0] : explicit
+  if (explicitValue?.trim()) return explicitValue.trim()
+
+  const authorization = request.headers.authorization
+  if (!authorization) return null
+  const match = authorization.match(/^Bearer\s+(.+)$/i)
+  return match?.[1]?.trim() || null
+}
 
 function sendJson(response: ServerResponse, status: number, payload: unknown) {
   response.writeHead(status, {
@@ -61,6 +72,8 @@ function readBody(request: IncomingMessage): Promise<unknown> {
 
 async function route(request: IncomingMessage, response: ServerResponse) {
   const url = new URL(request.url || '/', `http://${request.headers.host || 'localhost'}`)
+  const requestApiKey = extractRequestApiKey(request)
+  const requestConfig = withApiKeyOverride(config, requestApiKey)
 
   if (request.method === 'GET' && url.pathname === '/') {
     sendHtml(response, renderHome(config))
@@ -78,7 +91,7 @@ async function route(request: IncomingMessage, response: ServerResponse) {
   }
 
   if (request.method === 'GET' && url.pathname === '/api/smoke') {
-    sendJson(response, 200, await runSmoke(config))
+    sendJson(response, 200, await runSmoke(requestConfig))
     return
   }
 
@@ -91,15 +104,16 @@ async function route(request: IncomingMessage, response: ServerResponse) {
   }
 
   if (request.method === 'POST' && url.pathname === '/api/auto/run') {
+    const runner = requestApiKey ? new AutonomousTrader(requestConfig) : autonomousTrader
     sendJson(response, 200, {
       ok: true,
-      autonomous: await autonomousTrader.runOnce('manual'),
+      autonomous: await runner.runOnce('manual'),
     })
     return
   }
 
   if (request.method === 'GET' && url.pathname === '/api/account') {
-    const account = await callEndpointArenaTool(config, 'get_account')
+    const account = await callEndpointArenaTool(requestConfig, 'get_account')
     sendJson(response, 200, {
       ok: true,
       account: summarizeAccount(account),
@@ -108,7 +122,7 @@ async function route(request: IncomingMessage, response: ServerResponse) {
   }
 
   if (request.method === 'GET' && url.pathname === '/api/markets') {
-    const markets = await callEndpointArenaTool(config, 'list_markets')
+    const markets = await callEndpointArenaTool(requestConfig, 'list_markets')
     sendJson(response, 200, {
       ok: true,
       ...summarizeMarkets(markets),
@@ -130,7 +144,7 @@ async function route(request: IncomingMessage, response: ServerResponse) {
     }
     sendJson(response, 200, {
       ok: true,
-      market: await callEndpointArenaTool(config, 'get_market', { identifier }),
+      market: await callEndpointArenaTool(requestConfig, 'get_market', { identifier }),
     })
     return
   }
@@ -140,15 +154,15 @@ async function route(request: IncomingMessage, response: ServerResponse) {
     const trade = parseTradeBody(body)
     sendJson(response, 200, {
       ok: true,
-      quote: await quoteTrade(config, trade),
+      quote: await quoteTrade(requestConfig, trade),
     })
     return
   }
 
   if (request.method === 'POST' && url.pathname === '/api/submit') {
     const body = await readBody(request)
-    const submit = parseSubmitBody(config, body)
-    sendJson(response, 200, await submitTrade(config, submit))
+    const submit = parseSubmitBody(requestConfig, body)
+    sendJson(response, 200, await submitTrade(requestConfig, submit))
     return
   }
 
@@ -163,7 +177,7 @@ async function route(request: IncomingMessage, response: ServerResponse) {
 
 const server = createServer((request, response) => {
   route(request, response).catch((error) => {
-    const payload = publicErrorPayload(error, [config.apiKey])
+    const payload = publicErrorPayload(error, [config.apiKey, extractRequestApiKey(request)])
     sendJson(response, payload.status, payload.body)
   })
 })

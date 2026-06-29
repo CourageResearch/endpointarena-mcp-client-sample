@@ -140,6 +140,15 @@ export function renderHome(config: AppConfig): string {
       <section>
         <h2>Configuration</h2>
         <dl id="config"></dl>
+        <form id="api-key-form">
+          <label>Endpoint Arena API key <input id="api-key-input" name="apiKey" type="password" autocomplete="off" placeholder="ea_s4_..."></label>
+          <label><input id="remember-key" name="rememberKey" type="checkbox"> Remember in this browser</label>
+          <div class="actions">
+            <button type="submit">Use Key</button>
+            <button type="button" class="secondary" id="clear-key">Clear Key</button>
+          </div>
+          <p id="api-key-status">Browser key: not set</p>
+        </form>
         <div class="actions">
           <button type="button" id="run-smoke">Run Smoke</button>
           <button type="button" class="secondary" id="load-markets">Load Markets</button>
@@ -179,6 +188,10 @@ export function renderHome(config: AppConfig): string {
     const configEl = document.querySelector('#config');
     const accountOut = document.querySelector('#account-output');
     const resultOut = document.querySelector('#result-output');
+    const apiKeyInput = document.querySelector('#api-key-input');
+    const rememberKey = document.querySelector('#remember-key');
+    const apiKeyStatus = document.querySelector('#api-key-status');
+    const apiKeyStorageKey = 'endpointarena:mcp-client-sample:api-key';
 
     configEl.innerHTML = Object.entries(config)
       .map(([key, value]) => '<dt>' + key + '</dt><dd>' + String(value) + '</dd>')
@@ -188,12 +201,64 @@ export function renderHome(config: AppConfig): string {
       el.textContent = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
     };
 
+    function setApiKeyStatus() {
+      apiKeyStatus.textContent = apiKeyInput.value.trim()
+        ? 'Browser key: set'
+        : 'Browser key: not set';
+    }
+
+    function loadBrowserKey() {
+      const remembered = localStorage.getItem(apiKeyStorageKey);
+      const session = sessionStorage.getItem(apiKeyStorageKey);
+      const value = remembered || session || '';
+      apiKeyInput.value = value;
+      rememberKey.checked = Boolean(remembered);
+      setApiKeyStatus();
+    }
+
+    function currentApiKey() {
+      return apiKeyInput.value.trim();
+    }
+
+    function requestHeaders(initHeaders) {
+      const headers = new Headers(initHeaders || {});
+      const apiKey = currentApiKey();
+      if (apiKey) headers.set('X-Endpoint-Arena-Api-Key', apiKey);
+      return headers;
+    }
+
     async function request(path, init) {
-      const response = await fetch(path, init);
+      const headers = requestHeaders(init && init.headers);
+      const response = await fetch(path, { ...(init || {}), headers });
       const payload = await response.json().catch(() => ({ ok: false, error: { message: 'Non-JSON response' } }));
       if (!response.ok) throw payload;
       return payload;
     }
+
+    document.querySelector('#api-key-form').addEventListener('submit', (event) => {
+      event.preventDefault();
+      const apiKey = currentApiKey();
+      localStorage.removeItem(apiKeyStorageKey);
+      sessionStorage.removeItem(apiKeyStorageKey);
+      if (apiKey && rememberKey.checked) {
+        localStorage.setItem(apiKeyStorageKey, apiKey);
+      } else if (apiKey) {
+        sessionStorage.setItem(apiKeyStorageKey, apiKey);
+      }
+      setApiKeyStatus();
+      show(resultOut, apiKey ? 'Browser API key is set for this page.' : 'Browser API key cleared.');
+    });
+
+    document.querySelector('#clear-key').addEventListener('click', () => {
+      apiKeyInput.value = '';
+      rememberKey.checked = false;
+      localStorage.removeItem(apiKeyStorageKey);
+      sessionStorage.removeItem(apiKeyStorageKey);
+      setApiKeyStatus();
+      show(resultOut, 'Browser API key cleared.');
+    });
+
+    apiKeyInput.addEventListener('input', setApiKeyStatus);
 
     document.querySelector('#run-smoke').addEventListener('click', async () => {
       show(resultOut, 'Running smoke...');
@@ -240,6 +305,8 @@ export function renderHome(config: AppConfig): string {
         show(resultOut, error);
       }
     });
+
+    loadBrowserKey();
   </script>
 </body>
 </html>`

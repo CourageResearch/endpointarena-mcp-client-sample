@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { loadConfig, publicConfig } from '../src/config.js'
+import { loadConfig, publicConfig, withApiKeyOverride } from '../src/config.js'
 
 test('loadConfig defaults to production MCP and safe submit settings', () => {
   const config = loadConfig({})
@@ -63,4 +63,13 @@ test('loadConfig parses autonomous trading controls', () => {
   assert.equal(config.autonomousMinEdgeBps, 250)
   assert.equal(config.autonomousSlippageBps, 50)
   assert.deepEqual(config.autonomousMarketAllowlist, ['nct1', 'nct2'])
+})
+
+test('withApiKeyOverride swaps API keys without mutating the base config', () => {
+  const base = loadConfig({ ENDPOINT_ARENA_API_KEY: 'ea_s4_server_key' })
+  const overridden = withApiKeyOverride(base, ' ea_s4_browser_key ')
+
+  assert.equal(base.apiKey, 'ea_s4_server_key')
+  assert.equal(overridden.apiKey, 'ea_s4_browser_key')
+  assert.equal(withApiKeyOverride(base, '').apiKey, 'ea_s4_server_key')
 })

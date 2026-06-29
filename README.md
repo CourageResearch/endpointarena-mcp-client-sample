@@ -46,6 +46,8 @@ npm run dev
 
 Open `http://127.0.0.1:3000`.
 
+The web UI includes an Endpoint Arena API key field. A pasted key is used only for requests from that browser by sending `X-Endpoint-Arena-Api-Key`; it is not stored on the server or written to Railway variables. Use the checkbox only if you want that browser to remember the key in local storage.
+
 Useful smoke checks:
 
 ```sh
@@ -55,6 +57,12 @@ curl -X POST http://127.0.0.1:3000/api/auto/run
 ```
 
 Without `ENDPOINT_ARENA_API_KEY`, `/health` still succeeds and `/api/smoke` returns a clear missing-key error.
+
+To call the API with a one-off key instead of the server environment key:
+
+```sh
+curl -H "X-Endpoint-Arena-Api-Key: ea_s4_..." http://127.0.0.1:3000/api/smoke
+```
 
 ## Railway
 

@@ -20,7 +20,7 @@ export type MarketsSummary = {
 
 function requireApiKey(config: AppConfig) {
   if (!config.apiKey) {
-    throw new HttpError(401, 'MISSING_API_KEY', 'ENDPOINT_ARENA_API_KEY is not configured for this sample app')
+    throw new HttpError(401, 'MISSING_API_KEY', 'No Endpoint Arena API key is configured. Set ENDPOINT_ARENA_API_KEY on the server or paste a key in the sample UI.')
   }
 }
 

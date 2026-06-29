@@ -93,3 +93,12 @@ export function publicConfig(config: AppConfig) {
     autonomousMarketAllowlist: config.autonomousMarketAllowlist,
   }
 }
+
+export function withApiKeyOverride(config: AppConfig, apiKey: string | null): AppConfig {
+  const trimmed = apiKey?.trim()
+  if (!trimmed) return config
+  return {
+    ...config,
+    apiKey: trimmed,
+  }
+}
