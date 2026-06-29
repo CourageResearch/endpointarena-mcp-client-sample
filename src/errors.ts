@@ -28,12 +28,13 @@ export function publicErrorPayload(error: unknown, secrets: Array<string | undef
   }
 
   const message = error instanceof Error ? error.message : String(error)
+  const upstream = message.includes('Streamable HTTP error') || message.includes('Error POSTing to endpoint')
   return {
-    status: 500,
+    status: upstream ? 502 : 500,
     body: {
       ok: false,
       error: {
-        code: 'INTERNAL_ERROR',
+        code: upstream ? 'UPSTREAM_MCP_ERROR' : 'INTERNAL_ERROR',
         message: redactSecret(message, secrets),
       },
     },

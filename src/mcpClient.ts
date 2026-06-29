@@ -33,7 +33,6 @@ export async function withMcpClient<T>(config: AppConfig, callback: McpCallback<
     requestInit: {
       headers: {
         Authorization: `Bearer ${config.apiKey}`,
-        'Mcp-Protocol-Version': '2025-11-25',
       },
       signal: abortController.signal,
     },
