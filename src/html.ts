@@ -193,6 +193,39 @@ export function renderHome(config: AppConfig): string {
       gap: 12px;
       margin-bottom: 12px;
     }
+    .panel-controls {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .view-toggle {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--soft);
+      padding: 2px;
+    }
+    .view-toggle-button {
+      min-height: 26px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      padding: 4px 9px;
+      font-size: 12px;
+      font-weight: 760;
+    }
+    .view-toggle-button:hover {
+      transform: none;
+    }
+    .view-toggle-button.active {
+      background: var(--panel);
+      color: var(--blue-ink);
+      box-shadow: 0 1px 3px rgba(24, 34, 30, 0.12);
+    }
     h2 {
       margin: 0;
       font-size: 15px;
@@ -349,21 +382,33 @@ export function renderHome(config: AppConfig): string {
       gap: 8px;
       margin-top: 14px;
     }
-    pre {
+    pre, .human-output {
       min-height: 172px;
       max-height: 340px;
       overflow: auto;
-      border: 1px solid var(--night-line);
       border-radius: 8px;
+      padding: 14px;
+      margin: 0;
+    }
+    pre {
+      border: 1px solid var(--night-line);
       background: var(--night);
       color: #edf2ee;
-      padding: 14px;
       white-space: pre-wrap;
       overflow-wrap: anywhere;
       font-size: 12px;
       line-height: 1.45;
-      margin: 0;
       scrollbar-color: #516160 var(--night);
+    }
+    .human-output {
+      border: 1px solid var(--line);
+      background: #fbfcfa;
+      color: var(--ink);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .human-output[hidden], pre[hidden] {
+      display: none;
     }
     .account-output {
       min-height: 188px;
@@ -382,6 +427,110 @@ export function renderHome(config: AppConfig): string {
     .quote-submit {
       margin-top: 14px;
     }
+    .readable {
+      display: grid;
+      gap: 12px;
+    }
+    .readable-empty {
+      color: var(--muted);
+      font-weight: 650;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 8px;
+    }
+    .summary-tile {
+      border: 1px solid var(--soft);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 10px;
+    }
+    .summary-label {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 760;
+      letter-spacing: 0.04em;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+    .summary-value {
+      color: var(--ink);
+      font-size: 15px;
+      font-weight: 780;
+      overflow-wrap: anywhere;
+    }
+    .readable-section {
+      display: grid;
+      gap: 7px;
+    }
+    .readable-title {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .readable-list {
+      display: grid;
+      gap: 8px;
+    }
+    .readable-card {
+      border: 1px solid var(--soft);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 10px;
+    }
+    .readable-card-title {
+      color: var(--ink);
+      font-weight: 780;
+      margin-bottom: 5px;
+      overflow-wrap: anywhere;
+    }
+    .readable-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .readable-chip {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--soft);
+      color: var(--muted);
+      padding: 3px 7px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .readable-note {
+      color: var(--muted);
+      margin-top: 7px;
+      overflow-wrap: anywhere;
+    }
+    .readable-kv {
+      display: grid;
+      gap: 6px;
+    }
+    .readable-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid var(--soft);
+      padding-bottom: 6px;
+    }
+    .readable-row:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+    .readable-row span:first-child {
+      color: var(--muted);
+    }
+    .readable-row strong {
+      text-align: right;
+      overflow-wrap: anywhere;
+    }
     @media (max-width: 920px) {
       .status-shelf { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .layout { grid-template-columns: 1fr; }
@@ -394,6 +543,9 @@ export function renderHome(config: AppConfig): string {
       }
       .app-header {
         display: grid;
+      }
+      .panel-title-row {
+        align-items: flex-start;
       }
       .status-shelf, .quote-grid, .key-row {
         grid-template-columns: 1fr;
@@ -511,23 +663,39 @@ export function renderHome(config: AppConfig): string {
         <section class="panel">
           <div class="panel-title-row">
             <h2>Account Readiness</h2>
-            <span class="badge neutral" id="account-state">Idle</span>
+            <div class="panel-controls">
+              <div class="view-toggle" role="group" aria-label="Account readiness view">
+                <button type="button" class="view-toggle-button active" data-output-target="account" data-output-mode="human">Human</button>
+                <button type="button" class="view-toggle-button" data-output-target="account" data-output-mode="json">JSON</button>
+              </div>
+              <span class="badge neutral" id="account-state">Idle</span>
+            </div>
           </div>
-          <pre class="account-output" id="account-output">Not loaded.</pre>
+          <div class="human-output account-output" id="account-human"></div>
+          <pre class="account-output" id="account-output" hidden>Not loaded.</pre>
         </section>
 
         <section class="panel">
           <div class="panel-title-row">
             <h2>Result</h2>
-            <span class="badge good" id="result-state">Ready</span>
+            <div class="panel-controls">
+              <div class="view-toggle" role="group" aria-label="Result view">
+                <button type="button" class="view-toggle-button active" data-output-target="result" data-output-mode="human">Human</button>
+                <button type="button" class="view-toggle-button" data-output-target="result" data-output-mode="json">JSON</button>
+              </div>
+              <span class="badge good" id="result-state">Ready</span>
+            </div>
           </div>
-          <pre class="result-output" id="result-output">Ready.</pre>
+          <div class="human-output result-output" id="result-human"></div>
+          <pre class="result-output" id="result-output" hidden>Ready.</pre>
         </section>
       </div>
     </div>
   </main>
   <script>
+    const accountHuman = document.querySelector('#account-human');
     const accountOut = document.querySelector('#account-output');
+    const resultHuman = document.querySelector('#result-human');
     const resultOut = document.querySelector('#result-output');
     const accountState = document.querySelector('#account-state');
     const resultState = document.querySelector('#result-state');
@@ -536,15 +704,323 @@ export function renderHome(config: AppConfig): string {
     const apiKeyStatus = document.querySelector('#api-key-status');
     const apiKeyStorageKey = 'endpointarena:mcp-client-sample:api-key';
     const normalizeApiKey = (value) => value.replace(/\\s+/g, '').trim();
-
-    const show = (el, value) => {
-      el.textContent = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+    const outputState = {
+      account: { mode: 'human', value: 'Not loaded.' },
+      result: { mode: 'human', value: 'Ready.' },
+    };
+    const outputRefs = {
+      account: { human: accountHuman, json: accountOut },
+      result: { human: resultHuman, json: resultOut },
     };
 
     const setState = (el, text, tone) => {
       el.textContent = text;
       el.className = 'badge ' + tone;
     };
+
+    function escapeText(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function asRecord(value) {
+      return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    }
+
+    function getFirst(record, keys) {
+      for (const key of keys) {
+        if (record[key] !== undefined && record[key] !== null && record[key] !== '') return record[key];
+      }
+      return undefined;
+    }
+
+    function isPrimitive(value) {
+      return value === null || ['string', 'number', 'boolean'].includes(typeof value);
+    }
+
+    function display(value) {
+      if (value === undefined || value === null || value === '') return 'None';
+      if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+      return String(value);
+    }
+
+    function formatKey(key) {
+      return String(key)
+        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+        .replace(/_/g, ' ')
+        .replace(/^./, (letter) => letter.toUpperCase());
+    }
+
+    function formatMoneyValue(value) {
+      const number = Number(value);
+      if (!Number.isFinite(number)) return display(value);
+      return '$' + number.toLocaleString('en-US', { maximumFractionDigits: 6 });
+    }
+
+    function formatNumberValue(value) {
+      const number = Number(value);
+      if (!Number.isFinite(number)) return display(value);
+      return number.toLocaleString('en-US', { maximumFractionDigits: 6 });
+    }
+
+    function formatPercentValue(value) {
+      const number = Number(value);
+      if (!Number.isFinite(number)) return display(value);
+      const percent = Math.abs(number) <= 1 ? number * 100 : number;
+      return percent.toLocaleString('en-US', { maximumFractionDigits: 2 }) + '%';
+    }
+
+    function formatDateValue(value) {
+      if (!value) return 'None';
+      const date = new Date(String(value));
+      if (Number.isNaN(date.getTime())) return display(value);
+      return new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      }).format(date);
+    }
+
+    function summaryTile(label, value) {
+      return '<div class="summary-tile"><span class="summary-label">' + escapeText(label) +
+        '</span><div class="summary-value">' + escapeText(display(value)) + '</div></div>';
+    }
+
+    function summaryGrid(items) {
+      return '<div class="summary-grid">' + items.map(([label, value]) => summaryTile(label, value)).join('') + '</div>';
+    }
+
+    function readableSection(title, body) {
+      if (!body) return '';
+      return '<div class="readable-section"><div class="readable-title">' + escapeText(title) + '</div>' + body + '</div>';
+    }
+
+    function chips(values) {
+      const html = values
+        .filter((value) => value !== undefined && value !== null && value !== '')
+        .map((value) => '<span class="readable-chip">' + escapeText(value) + '</span>')
+        .join('');
+      return html ? '<div class="readable-meta">' + html + '</div>' : '';
+    }
+
+    function readableCard(title, meta, note) {
+      return '<div class="readable-card"><div class="readable-card-title">' + escapeText(display(title)) +
+        '</div>' + chips(meta || []) +
+        (note ? '<div class="readable-note">' + escapeText(note) + '</div>' : '') + '</div>';
+    }
+
+    function keyValueRows(record, preferredKeys) {
+      const source = asRecord(record);
+      const keys = preferredKeys && preferredKeys.length ? preferredKeys : Object.keys(source);
+      const rows = keys
+        .filter((key) => isPrimitive(source[key]))
+        .slice(0, 12)
+        .map((key) => '<div class="readable-row"><span>' + escapeText(formatKey(key)) +
+          '</span><strong>' + escapeText(display(source[key])) + '</strong></div>')
+        .join('');
+      return rows ? '<div class="readable-kv">' + rows + '</div>' : '';
+    }
+
+    function marketList(payload, limit) {
+      const record = asRecord(payload);
+      const markets = Array.isArray(payload) ? payload : Array.isArray(record.markets) ? record.markets : [];
+      if (!markets.length) return '<div class="readable-empty">No markets returned.</div>';
+      return '<div class="readable-list">' + markets.slice(0, limit || 8).map((marketValue) => {
+        const market = asRecord(marketValue);
+        const trial = asRecord(market.trial);
+        const prices = asRecord(market.prices);
+        const activity = asRecord(market.activity);
+        const priceMeta = [];
+        if (prices.yes !== undefined) priceMeta.push(formatPercentValue(prices.yes) + ' YES');
+        if (prices.no !== undefined) priceMeta.push(formatPercentValue(prices.no) + ' NO');
+        if (activity.volumeUsd !== undefined) priceMeta.push(formatMoneyValue(activity.volumeUsd) + ' vol');
+        if (activity.tradeCount !== undefined) priceMeta.push(formatNumberValue(activity.tradeCount) + ' trades');
+        const meta = [
+          market.marketId,
+          market.status,
+          market.resolvedOutcome ? 'Resolved ' + market.resolvedOutcome : '',
+          trial.sponsorTicker || trial.sponsorName,
+          trial.phase,
+          market.closeTime ? formatDateValue(market.closeTime) : '',
+          ...priceMeta,
+        ];
+        const note = trial.summary || trial.marketPrimaryEndpoint || market.summary || '';
+        return readableCard(market.title || market.marketId || 'Market', meta, note);
+      }).join('') + '</div>';
+    }
+
+    function accountSummary(payload) {
+      const account = asRecord(payload);
+      const readiness = asRecord(account.readiness);
+      const balances = asRecord(account.balances);
+      const environment = asRecord(account.environment);
+      const tiles = summaryGrid([
+        ['Can trade', readiness.canTrade === true ? 'Yes' : 'No'],
+        ['Cash', formatMoneyValue(balances.cashUsd)],
+        ['Needs setup', readiness.needsWebSetup === true || readiness.needsTradingSetup === true ? 'Yes' : 'No'],
+        ['Needs funds', readiness.needsFunds === true ? 'Yes' : 'No'],
+      ]);
+      const message = readiness.message
+        ? readableSection('Readiness message', readableCard(readiness.message, [
+          environment.season,
+          environment.mode,
+          environment.realMoney === true ? 'real money' : environment.realMoney === false ? 'real money disabled' : '',
+        ]))
+        : '';
+      const missing = Array.isArray(environment.missing) && environment.missing.length
+        ? readableSection('Missing production checks', chips(environment.missing))
+        : '';
+      return tiles + message + missing;
+    }
+
+    function renderAccount(payload) {
+      return '<div class="readable">' + accountSummary(payload) + '</div>';
+    }
+
+    function renderMarkets(payload) {
+      const record = asRecord(payload);
+      const count = record.count !== undefined ? record.count : Array.isArray(record.markets) ? record.markets.length : 0;
+      return '<div class="readable">' +
+        summaryGrid([['Markets', count], ['Showing', Math.min(Number(count) || 0, 8)]]) +
+        readableSection('Markets', marketList(payload, 8)) +
+        '</div>';
+    }
+
+    function renderMarket(payload) {
+      return '<div class="readable">' + readableSection('Market', marketList([payload], 1)) + keyValueRows(asRecord(payload), [
+        'marketId',
+        'status',
+        'resolvedOutcome',
+        'closeTime',
+      ]) + '</div>';
+    }
+
+    function renderSmoke(payload) {
+      const record = asRecord(payload);
+      const server = asRecord(record.server);
+      const tools = Array.isArray(record.tools) ? record.tools : [];
+      const resources = Array.isArray(record.resources) ? record.resources : [];
+      const prompts = Array.isArray(record.prompts) ? record.prompts : [];
+      const markets = asRecord(record.markets);
+      const account = asRecord(record.account);
+      const readiness = asRecord(account.readiness);
+      const toolNames = tools.map((toolValue) => {
+        const tool = asRecord(toolValue);
+        return tool.name ? tool.name + (tool.destructive ? ' destructive' : '') : '';
+      });
+      return '<div class="readable">' +
+        summaryGrid([
+          ['Smoke', record.ok === true ? 'Passing' : 'Failed'],
+          ['Server', server.title || server.name || 'Unknown'],
+          ['Tools', tools.length],
+          ['Markets', markets.count || 0],
+        ]) +
+        readableSection('Account', accountSummary(account)) +
+        readableSection('Tools', chips(toolNames)) +
+        readableSection('Resources', chips(resources.map((resourceValue) => asRecord(resourceValue).title || asRecord(resourceValue).name))) +
+        readableSection('Prompts', chips(prompts.map((promptValue) => asRecord(promptValue).title || asRecord(promptValue).name))) +
+        readableSection('Markets', marketList(markets, 5)) +
+        (readiness.message ? readableSection('Bottom line', readableCard(readiness.message, [])) : '') +
+        '</div>';
+    }
+
+    function renderQuote(payload) {
+      const outer = asRecord(payload);
+      const quote = asRecord(outer.quote || payload);
+      const trade = asRecord(quote.trade || quote.request || quote.order);
+      const market = asRecord(quote.market);
+      return '<div class="readable">' +
+        summaryGrid([
+          ['Quote', outer.ok === false ? 'Failed' : 'Ready'],
+          ['Market', getFirst(quote, ['marketId', 'marketIdentifier', 'identifier']) || market.marketId || trade.marketId],
+          ['Action', getFirst(quote, ['action', 'side']) || trade.action],
+          ['Amount', formatMoneyValue(getFirst(quote, ['amountUsd', 'notionalUsd', 'maxCostUsd']) || trade.amountUsd)],
+        ]) +
+        readableSection('Quote details', keyValueRows(quote, [
+          'estimatedShares',
+          'shares',
+          'price',
+          'averagePrice',
+          'maxCostUsd',
+          'feeUsd',
+          'slippageBps',
+          'message',
+        ])) +
+        '</div>';
+    }
+
+    function renderAuto(payload) {
+      const outer = asRecord(payload);
+      const auto = asRecord(outer.autonomous || payload);
+      const decision = asRecord(auto.decision);
+      return '<div class="readable">' +
+        summaryGrid([
+          ['Outcome', auto.outcome || (auto.ok === false ? 'failed' : 'complete')],
+          ['Dry run', auto.dryRun === true ? 'Yes' : 'No'],
+          ['Daily spend', formatMoneyValue(auto.dailySpendUsd) + ' / ' + formatMoneyValue(auto.dailySpendLimitUsd)],
+          ['Decision', decision.action || 'None'],
+        ]) +
+        readableSection('Selected trade', decision.marketId ? readableCard(decision.marketTitle || decision.marketId, [
+          decision.marketId,
+          decision.action,
+          decision.edgeBps !== undefined ? formatNumberValue(decision.edgeBps) + ' bps edge' : '',
+          decision.amountUsd !== undefined ? formatMoneyValue(decision.amountUsd) : '',
+        ], decision.reason || '') : '<div class="readable-empty">No trade selected.</div>') +
+        (auto.account ? readableSection('Account', accountSummary(auto.account)) : '') +
+        (auto.markets ? readableSection('Markets reviewed', marketList(auto.markets, 5)) : '') +
+        (auto.quote ? readableSection('Quote', renderQuote(auto.quote)) : '') +
+        (auto.error ? readableSection('Error', renderError(auto.error)) : '') +
+        '</div>';
+    }
+
+    function renderError(errorValue) {
+      const error = asRecord(errorValue);
+      return readableCard(error.message || 'Request failed', [error.code || '', error.status || ''], '');
+    }
+
+    function renderFallback(payload) {
+      const record = asRecord(payload);
+      const rows = keyValueRows(record);
+      return '<div class="readable">' + (rows || '<div class="readable-empty">No summary available. Switch to JSON for the raw response.</div>') + '</div>';
+    }
+
+    function renderHuman(target, value) {
+      if (typeof value === 'string') return '<div class="readable-empty">' + escapeText(value) + '</div>';
+      const record = asRecord(value);
+      if (record.error) return '<div class="readable">' + readableSection('Error', renderError(record.error)) + '</div>';
+      if (record.tools && record.account && record.markets) return renderSmoke(record);
+      if (record.account) return renderAccount(record.account);
+      if (record.autonomous) return renderAuto(record);
+      if (record.quote) return renderQuote(record);
+      if (record.market) return renderMarket(record.market);
+      if (Array.isArray(record.markets) || record.count !== undefined) return renderMarkets(record);
+      if (record.readiness || target === 'account') return renderAccount(record);
+      return renderFallback(record);
+    }
+
+    function renderOutput(target) {
+      const state = outputState[target];
+      const refs = outputRefs[target];
+      const jsonMode = state.mode === 'json';
+      refs.json.textContent = typeof state.value === 'string' ? state.value : JSON.stringify(state.value, null, 2);
+      refs.human.innerHTML = renderHuman(target, state.value);
+      refs.json.hidden = !jsonMode;
+      refs.human.hidden = jsonMode;
+      document.querySelectorAll('[data-output-target="' + target + '"]').forEach((button) => {
+        const active = button.dataset.outputMode === state.mode;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+    }
+
+    function showOutput(target, value) {
+      outputState[target].value = value;
+      renderOutput(target);
+    }
 
     function setApiKeyStatus() {
       const isSet = Boolean(apiKeyInput.value.trim());
@@ -593,7 +1069,7 @@ export function renderHome(config: AppConfig): string {
       }
       setApiKeyStatus();
       setState(resultState, 'Ready', 'good');
-      show(resultOut, apiKey ? 'Browser API key set.' : 'Browser API key cleared.');
+      showOutput('result', apiKey ? 'Browser API key set.' : 'Browser API key cleared.');
     });
 
     document.querySelector('#paste-key').addEventListener('click', async () => {
@@ -601,18 +1077,18 @@ export function renderHome(config: AppConfig): string {
         const pasted = normalizeApiKey(await navigator.clipboard.readText());
         if (!pasted) {
           setState(resultState, 'Ready', 'good');
-          show(resultOut, 'Clipboard is empty.');
+          showOutput('result', 'Clipboard is empty.');
           apiKeyInput.focus();
           return;
         }
         apiKeyInput.value = pasted;
         setApiKeyStatus();
         setState(resultState, 'Ready', 'good');
-        show(resultOut, 'Browser API key pasted. Click Use to store it for this page.');
+        showOutput('result', 'Browser API key pasted. Click Use to store it for this page.');
         apiKeyInput.focus();
       } catch {
         setState(resultState, 'Ready', 'good');
-        show(resultOut, 'Clipboard access was blocked. Click the key field and press Cmd+V.');
+        showOutput('result', 'Clipboard access was blocked. Click the key field and press Cmd+V.');
         apiKeyInput.focus();
       }
     });
@@ -624,7 +1100,7 @@ export function renderHome(config: AppConfig): string {
       sessionStorage.removeItem(apiKeyStorageKey);
       setApiKeyStatus();
       setState(resultState, 'Ready', 'good');
-      show(resultOut, 'Browser API key cleared.');
+      showOutput('result', 'Browser API key cleared.');
     });
 
     apiKeyInput.addEventListener('input', setApiKeyStatus);
@@ -638,15 +1114,15 @@ export function renderHome(config: AppConfig): string {
     document.querySelector('#run-smoke').addEventListener('click', async () => {
       setState(accountState, 'Working', 'warn');
       setState(resultState, 'Working', 'warn');
-      show(resultOut, 'Running smoke...');
+      showOutput('result', 'Running smoke...');
       try {
         const payload = await request('/api/smoke');
-        show(accountOut, payload.account || payload);
-        show(resultOut, payload);
+        showOutput('account', payload.account || payload);
+        showOutput('result', payload);
         setState(accountState, 'Loaded', 'good');
         setState(resultState, 'Complete', 'good');
       } catch (error) {
-        show(resultOut, error);
+        showOutput('result', error);
         setState(accountState, 'Idle', 'neutral');
         setState(resultState, 'Error', 'bad');
       }
@@ -654,24 +1130,24 @@ export function renderHome(config: AppConfig): string {
 
     document.querySelector('#load-markets').addEventListener('click', async () => {
       setState(resultState, 'Working', 'warn');
-      show(resultOut, 'Loading markets...');
+      showOutput('result', 'Loading markets...');
       try {
-        show(resultOut, await request('/api/markets'));
+        showOutput('result', await request('/api/markets'));
         setState(resultState, 'Loaded', 'good');
       } catch (error) {
-        show(resultOut, error);
+        showOutput('result', error);
         setState(resultState, 'Error', 'bad');
       }
     });
 
     document.querySelector('#run-auto').addEventListener('click', async () => {
       setState(resultState, 'Working', 'warn');
-      show(resultOut, 'Running autonomous model...');
+      showOutput('result', 'Running autonomous model...');
       try {
-        show(resultOut, await request('/api/auto/run', { method: 'POST' }));
+        showOutput('result', await request('/api/auto/run', { method: 'POST' }));
         setState(resultState, 'Complete', 'good');
       } catch (error) {
-        show(resultOut, error);
+        showOutput('result', error);
         setState(resultState, 'Error', 'bad');
       }
     });
@@ -682,21 +1158,30 @@ export function renderHome(config: AppConfig): string {
       data.amountUsd = Number(data.amountUsd);
       data.slippageBps = Number(data.slippageBps);
       setState(resultState, 'Working', 'warn');
-      show(resultOut, 'Requesting quote...');
+      showOutput('result', 'Requesting quote...');
       try {
-        show(resultOut, await request('/api/quote', {
+        showOutput('result', await request('/api/quote', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data),
         }));
         setState(resultState, 'Quoted', 'good');
       } catch (error) {
-        show(resultOut, error);
+        showOutput('result', error);
         setState(resultState, 'Error', 'bad');
       }
     });
 
+    document.querySelectorAll('[data-output-target]').forEach((button) => {
+      button.addEventListener('click', () => {
+        outputState[button.dataset.outputTarget].mode = button.dataset.outputMode;
+        renderOutput(button.dataset.outputTarget);
+      });
+    });
+
     loadBrowserKey();
+    renderOutput('account');
+    renderOutput('result');
   </script>
 </body>
 </html>`
