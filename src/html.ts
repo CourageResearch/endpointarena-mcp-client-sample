@@ -268,9 +268,17 @@ export function renderHome(config: AppConfig): string {
     }
     .key-row {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) auto auto;
+      grid-template-columns: minmax(0, 1fr) auto;
       gap: 8px;
       align-items: end;
+    }
+    .key-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .key-input {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      letter-spacing: 0;
     }
     input, select {
       width: 100%;
@@ -390,6 +398,9 @@ export function renderHome(config: AppConfig): string {
       .status-shelf, .quote-grid, .key-row {
         grid-template-columns: 1fr;
       }
+      .key-actions button {
+        flex: 1;
+      }
       .pill-link {
         width: fit-content;
       }
@@ -453,9 +464,12 @@ export function renderHome(config: AppConfig): string {
             <div class="field-stack">
               <label for="api-key-input">Browser API key</label>
               <div class="key-row">
-                <input id="api-key-input" name="apiKey" type="password" autocomplete="off" placeholder="ea_s4_...">
-                <button type="submit">Use</button>
-                <button type="button" class="ghost" id="clear-key">Clear</button>
+                <input class="key-input" id="api-key-input" name="apiKey" type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="ea_s4_...">
+                <div class="key-actions">
+                  <button type="button" class="secondary" id="paste-key">Paste</button>
+                  <button type="submit">Use</button>
+                  <button type="button" class="ghost" id="clear-key">Clear</button>
+                </div>
               </div>
             </div>
             <label class="checkline" for="remember-key">
@@ -521,6 +535,7 @@ export function renderHome(config: AppConfig): string {
     const rememberKey = document.querySelector('#remember-key');
     const apiKeyStatus = document.querySelector('#api-key-status');
     const apiKeyStorageKey = 'endpointarena:mcp-client-sample:api-key';
+    const normalizeApiKey = (value) => value.replace(/\\s+/g, '').trim();
 
     const show = (el, value) => {
       el.textContent = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
@@ -547,7 +562,7 @@ export function renderHome(config: AppConfig): string {
     }
 
     function currentApiKey() {
-      return apiKeyInput.value.trim();
+      return normalizeApiKey(apiKeyInput.value);
     }
 
     function requestHeaders(initHeaders) {
@@ -568,6 +583,7 @@ export function renderHome(config: AppConfig): string {
     document.querySelector('#api-key-form').addEventListener('submit', (event) => {
       event.preventDefault();
       const apiKey = currentApiKey();
+      apiKeyInput.value = apiKey;
       localStorage.removeItem(apiKeyStorageKey);
       sessionStorage.removeItem(apiKeyStorageKey);
       if (apiKey && rememberKey.checked) {
@@ -578,6 +594,27 @@ export function renderHome(config: AppConfig): string {
       setApiKeyStatus();
       setState(resultState, 'Ready', 'good');
       show(resultOut, apiKey ? 'Browser API key set.' : 'Browser API key cleared.');
+    });
+
+    document.querySelector('#paste-key').addEventListener('click', async () => {
+      try {
+        const pasted = normalizeApiKey(await navigator.clipboard.readText());
+        if (!pasted) {
+          setState(resultState, 'Ready', 'good');
+          show(resultOut, 'Clipboard is empty.');
+          apiKeyInput.focus();
+          return;
+        }
+        apiKeyInput.value = pasted;
+        setApiKeyStatus();
+        setState(resultState, 'Ready', 'good');
+        show(resultOut, 'Browser API key pasted. Click Use to store it for this page.');
+        apiKeyInput.focus();
+      } catch {
+        setState(resultState, 'Ready', 'good');
+        show(resultOut, 'Clipboard access was blocked. Click the key field and press Cmd+V.');
+        apiKeyInput.focus();
+      }
     });
 
     document.querySelector('#clear-key').addEventListener('click', () => {
@@ -591,6 +628,12 @@ export function renderHome(config: AppConfig): string {
     });
 
     apiKeyInput.addEventListener('input', setApiKeyStatus);
+    apiKeyInput.addEventListener('paste', () => {
+      setTimeout(() => {
+        apiKeyInput.value = currentApiKey();
+        setApiKeyStatus();
+      }, 0);
+    });
 
     document.querySelector('#run-smoke').addEventListener('click', async () => {
       setState(accountState, 'Working', 'warn');
