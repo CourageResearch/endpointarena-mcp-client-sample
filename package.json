@@ -1,0 +1,26 @@
+{
+  "name": "endpointarena-mcp-client-sample",
+  "version": "1.0.0",
+  "description": "Independent sample MCP client for Endpoint Arena.",
+  "type": "module",
+  "private": false,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/src/server.js",
+    "test": "node --import tsx --test test/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "engines": {
+    "node": ">=24.14.0 <25",
+    "npm": ">=11 <12"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "tsx": "^4.22.4",
+    "typescript": "^5.7.3"
+  }
+}
