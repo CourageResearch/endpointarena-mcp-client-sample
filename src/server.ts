@@ -1,5 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { URL } from 'node:url'
+import { AutonomousTrader } from './autonomousTrader.js'
 import { loadConfig, publicConfig } from './config.js'
 import { publicErrorPayload } from './errors.js'
 import { renderHome } from './html.js'
@@ -14,6 +15,7 @@ import {
 import { parseSubmitBody, parseTradeBody } from './safety.js'
 
 const config = loadConfig()
+const autonomousTrader = new AutonomousTrader(config)
 
 function sendJson(response: ServerResponse, status: number, payload: unknown) {
   response.writeHead(status, {
@@ -77,6 +79,22 @@ async function route(request: IncomingMessage, response: ServerResponse) {
 
   if (request.method === 'GET' && url.pathname === '/api/smoke') {
     sendJson(response, 200, await runSmoke(config))
+    return
+  }
+
+  if (request.method === 'GET' && url.pathname === '/api/auto/status') {
+    sendJson(response, 200, {
+      ok: true,
+      autonomous: autonomousTrader.status(),
+    })
+    return
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/auto/run') {
+    sendJson(response, 200, {
+      ok: true,
+      autonomous: await autonomousTrader.runOnce('manual'),
+    })
     return
   }
 
@@ -158,5 +176,8 @@ server.listen(config.port, () => {
     mcpUrl: config.mcpUrl,
     apiKeyConfigured: config.apiKey.length > 0,
     allowSubmitTrades: config.allowSubmitTrades,
+    autonomousTradingEnabled: config.autonomousTradingEnabled,
+    autonomousDryRun: config.autonomousDryRun,
   }))
+  autonomousTrader.start()
 })

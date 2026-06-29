@@ -10,6 +10,14 @@ test('loadConfig defaults to production MCP and safe submit settings', () => {
   assert.equal(config.allowSubmitTrades, false)
   assert.equal(config.clientTimeoutMs, 120_000)
   assert.equal(config.port, 3000)
+  assert.equal(config.autonomousTradingEnabled, false)
+  assert.equal(config.autonomousDryRun, true)
+  assert.equal(config.autonomousIntervalMs, 900_000)
+  assert.equal(config.autonomousMaxTradeUsd, 1)
+  assert.equal(config.autonomousDailySpendLimitUsd, 3)
+  assert.equal(config.autonomousMinEdgeBps, 500)
+  assert.equal(config.autonomousSlippageBps, 100)
+  assert.deepEqual(config.autonomousMarketAllowlist, [])
 })
 
 test('publicConfig never returns raw API key', () => {
@@ -23,6 +31,36 @@ test('publicConfig never returns raw API key', () => {
     apiKeyConfigured: true,
     allowSubmitTrades: true,
     clientTimeoutMs: 120_000,
+    autonomousTradingEnabled: false,
+    autonomousDryRun: true,
+    autonomousIntervalMs: 900_000,
+    autonomousMaxTradeUsd: 1,
+    autonomousDailySpendLimitUsd: 3,
+    autonomousMinEdgeBps: 500,
+    autonomousSlippageBps: 100,
+    autonomousMarketAllowlist: [],
   })
   assert.equal(JSON.stringify(publicConfig(config)).includes('ea_s4_secret_value'), false)
+})
+
+test('loadConfig parses autonomous trading controls', () => {
+  const config = loadConfig({
+    AUTONOMOUS_TRADING_ENABLED: 'true',
+    AUTONOMOUS_DRY_RUN: 'false',
+    AUTONOMOUS_INTERVAL_MS: '60000',
+    AUTONOMOUS_MAX_TRADE_USD: '0.25',
+    AUTONOMOUS_DAILY_SPEND_LIMIT_USD: '1.5',
+    AUTONOMOUS_MIN_EDGE_BPS: '250',
+    AUTONOMOUS_SLIPPAGE_BPS: '50',
+    AUTONOMOUS_MARKET_ALLOWLIST: 'nct1, nct2',
+  })
+
+  assert.equal(config.autonomousTradingEnabled, true)
+  assert.equal(config.autonomousDryRun, false)
+  assert.equal(config.autonomousIntervalMs, 60_000)
+  assert.equal(config.autonomousMaxTradeUsd, 0.25)
+  assert.equal(config.autonomousDailySpendLimitUsd, 1.5)
+  assert.equal(config.autonomousMinEdgeBps, 250)
+  assert.equal(config.autonomousSlippageBps, 50)
+  assert.deepEqual(config.autonomousMarketAllowlist, ['nct1', 'nct2'])
 })

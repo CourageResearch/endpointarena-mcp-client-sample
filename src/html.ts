@@ -6,6 +6,11 @@ export function renderHome(config: AppConfig): string {
     target: config.mcpUrl,
     apiKey: keyConfiguredSummary(config.apiKey),
     submitTrades: config.allowSubmitTrades ? 'enabled' : 'disabled',
+    autonomous: config.autonomousTradingEnabled ? 'enabled' : 'disabled',
+    autonomousDryRun: config.autonomousDryRun ? 'yes' : 'no',
+    autonomousModel: 'simple-open-source-edge-v1',
+    autonomousMaxTradeUsd: config.autonomousMaxTradeUsd,
+    autonomousDailySpendLimitUsd: config.autonomousDailySpendLimitUsd,
   })
 
   return `<!doctype html>
@@ -138,6 +143,7 @@ export function renderHome(config: AppConfig): string {
         <div class="actions">
           <button type="button" id="run-smoke">Run Smoke</button>
           <button type="button" class="secondary" id="load-markets">Load Markets</button>
+          <button type="button" class="secondary" id="run-auto">Run Auto</button>
         </div>
       </section>
       <section>
@@ -204,6 +210,15 @@ export function renderHome(config: AppConfig): string {
       show(resultOut, 'Loading markets...');
       try {
         show(resultOut, await request('/api/markets'));
+      } catch (error) {
+        show(resultOut, error);
+      }
+    });
+
+    document.querySelector('#run-auto').addEventListener('click', async () => {
+      show(resultOut, 'Running autonomous model...');
+      try {
+        show(resultOut, await request('/api/auto/run', { method: 'POST' }));
       } catch (error) {
         show(resultOut, error);
       }

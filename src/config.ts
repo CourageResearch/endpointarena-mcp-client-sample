@@ -4,11 +4,20 @@ export type AppConfig = {
   allowSubmitTrades: boolean
   clientTimeoutMs: number
   port: number
+  autonomousTradingEnabled: boolean
+  autonomousDryRun: boolean
+  autonomousIntervalMs: number
+  autonomousMaxTradeUsd: number
+  autonomousDailySpendLimitUsd: number
+  autonomousMinEdgeBps: number
+  autonomousSlippageBps: number
+  autonomousMarketAllowlist: string[]
 }
 
 const DEFAULT_MCP_URL = 'https://endpointarena.com/api/mcp'
 const DEFAULT_TIMEOUT_MS = 120_000
 const DEFAULT_PORT = 3000
+const DEFAULT_AUTONOMOUS_INTERVAL_MS = 15 * 60_000
 
 function parseBoolean(value: string | undefined, fallback = false): boolean {
   if (value == null || value.trim() === '') return fallback
@@ -19,6 +28,26 @@ function parsePositiveInteger(value: string | undefined, fallback: number): numb
   if (value == null || value.trim() === '') return fallback
   const parsed = Number.parseInt(value, 10)
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
+}
+
+function parsePositiveNumber(value: string | undefined, fallback: number): number {
+  if (value == null || value.trim() === '') return fallback
+  const parsed = Number.parseFloat(value)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
+}
+
+function parseNonNegativeInteger(value: string | undefined, fallback: number): number {
+  if (value == null || value.trim() === '') return fallback
+  const parsed = Number.parseInt(value, 10)
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback
+}
+
+function parseCsv(value: string | undefined): string[] {
+  if (!value) return []
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
 }
 
 function normalizeUrl(value: string | undefined): string {
@@ -37,6 +66,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     allowSubmitTrades: parseBoolean(env.ALLOW_SUBMIT_TRADES, false),
     clientTimeoutMs: parsePositiveInteger(env.CLIENT_TIMEOUT_MS, DEFAULT_TIMEOUT_MS),
     port: parsePositiveInteger(env.PORT, DEFAULT_PORT),
+    autonomousTradingEnabled: parseBoolean(env.AUTONOMOUS_TRADING_ENABLED, false),
+    autonomousDryRun: parseBoolean(env.AUTONOMOUS_DRY_RUN, true),
+    autonomousIntervalMs: parsePositiveInteger(env.AUTONOMOUS_INTERVAL_MS, DEFAULT_AUTONOMOUS_INTERVAL_MS),
+    autonomousMaxTradeUsd: parsePositiveNumber(env.AUTONOMOUS_MAX_TRADE_USD, 1),
+    autonomousDailySpendLimitUsd: parsePositiveNumber(env.AUTONOMOUS_DAILY_SPEND_LIMIT_USD, 3),
+    autonomousMinEdgeBps: parseNonNegativeInteger(env.AUTONOMOUS_MIN_EDGE_BPS, 500),
+    autonomousSlippageBps: parseNonNegativeInteger(env.AUTONOMOUS_SLIPPAGE_BPS, 100),
+    autonomousMarketAllowlist: parseCsv(env.AUTONOMOUS_MARKET_ALLOWLIST),
   }
 }
 
@@ -46,5 +83,13 @@ export function publicConfig(config: AppConfig) {
     apiKeyConfigured: config.apiKey.length > 0,
     allowSubmitTrades: config.allowSubmitTrades,
     clientTimeoutMs: config.clientTimeoutMs,
+    autonomousTradingEnabled: config.autonomousTradingEnabled,
+    autonomousDryRun: config.autonomousDryRun,
+    autonomousIntervalMs: config.autonomousIntervalMs,
+    autonomousMaxTradeUsd: config.autonomousMaxTradeUsd,
+    autonomousDailySpendLimitUsd: config.autonomousDailySpendLimitUsd,
+    autonomousMinEdgeBps: config.autonomousMinEdgeBps,
+    autonomousSlippageBps: config.autonomousSlippageBps,
+    autonomousMarketAllowlist: config.autonomousMarketAllowlist,
   }
 }
