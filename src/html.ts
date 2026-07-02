@@ -625,7 +625,6 @@ export function renderHome(config: AppConfig): string {
                 <input class="key-input" id="api-key-input" name="apiKey" type="text" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="ea_s4_...">
                 <div class="key-actions">
                   <button type="button" class="secondary" id="paste-key">Paste</button>
-                  <button type="submit">Use</button>
                   <button type="button" class="ghost" id="clear-key">Clear</button>
                 </div>
               </div>
@@ -1029,8 +1028,8 @@ export function renderHome(config: AppConfig): string {
     }
 
     function setApiKeyStatus() {
-      const isSet = Boolean(apiKeyInput.value.trim());
-      apiKeyStatus.textContent = isSet ? 'Browser key set' : 'Browser key not set';
+      const isSet = Boolean(currentApiKey());
+      apiKeyStatus.textContent = isSet ? 'Browser key active' : 'Browser key not set';
       apiKeyStatus.className = 'inline-status ' + (isSet ? 'good' : 'neutral');
     }
 
@@ -1045,6 +1044,25 @@ export function renderHome(config: AppConfig): string {
 
     function currentApiKey() {
       return normalizeApiKey(apiKeyInput.value);
+    }
+
+    function storeBrowserKey(apiKey) {
+      localStorage.removeItem(apiKeyStorageKey);
+      sessionStorage.removeItem(apiKeyStorageKey);
+      if (apiKey && rememberKey.checked) {
+        localStorage.setItem(apiKeyStorageKey, apiKey);
+      } else if (apiKey) {
+        sessionStorage.setItem(apiKeyStorageKey, apiKey);
+      }
+    }
+
+    function activateBrowserKey(options) {
+      const apiKey = currentApiKey();
+      storeBrowserKey(apiKey);
+      setApiKeyStatus();
+      if (!options || !options.announce) return;
+      setState(resultState, 'Ready', 'good');
+      showOutput('result', options.message || (apiKey ? 'Browser API key is active.' : 'Browser API key cleared.'));
     }
 
     function requestHeaders(initHeaders) {
@@ -1066,16 +1084,7 @@ export function renderHome(config: AppConfig): string {
       event.preventDefault();
       const apiKey = currentApiKey();
       apiKeyInput.value = apiKey;
-      localStorage.removeItem(apiKeyStorageKey);
-      sessionStorage.removeItem(apiKeyStorageKey);
-      if (apiKey && rememberKey.checked) {
-        localStorage.setItem(apiKeyStorageKey, apiKey);
-      } else if (apiKey) {
-        sessionStorage.setItem(apiKeyStorageKey, apiKey);
-      }
-      setApiKeyStatus();
-      setState(resultState, 'Ready', 'good');
-      showOutput('result', apiKey ? 'Browser API key set.' : 'Browser API key cleared.');
+      activateBrowserKey({ announce: true });
     });
 
     document.querySelector('#paste-key').addEventListener('click', async () => {
@@ -1088,9 +1097,7 @@ export function renderHome(config: AppConfig): string {
           return;
         }
         apiKeyInput.value = pasted;
-        setApiKeyStatus();
-        setState(resultState, 'Ready', 'good');
-        showOutput('result', 'Browser API key pasted. Click Use to store it for this page.');
+        activateBrowserKey({ announce: true, message: 'Browser API key pasted and active.' });
         apiKeyInput.focus();
       } catch {
         setState(resultState, 'Ready', 'good');
@@ -1109,13 +1116,14 @@ export function renderHome(config: AppConfig): string {
       showOutput('result', 'Browser API key cleared.');
     });
 
-    apiKeyInput.addEventListener('input', setApiKeyStatus);
+    apiKeyInput.addEventListener('input', () => activateBrowserKey());
     apiKeyInput.addEventListener('paste', () => {
       setTimeout(() => {
         apiKeyInput.value = currentApiKey();
-        setApiKeyStatus();
+        activateBrowserKey({ announce: true, message: currentApiKey() ? 'Browser API key pasted and active.' : 'Browser API key cleared.' });
       }, 0);
     });
+    rememberKey.addEventListener('change', () => activateBrowserKey());
 
     document.querySelector('#run-smoke').addEventListener('click', async () => {
       setState(accountState, 'Working', 'warn');
