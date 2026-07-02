@@ -579,7 +579,6 @@ export function renderHome(config: AppConfig): string {
       <div class="header-copy">
         <p class="eyebrow">Independent Railway sample</p>
         <h1>Endpoint Arena MCP Console</h1>
-        <p>${escapeHtml(endpointLabel(config.mcpUrl))}</p>
       </div>
       <a class="pill-link" href="/health" target="_blank" rel="noreferrer">Health</a>
     </header>
