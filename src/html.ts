@@ -617,6 +617,7 @@ export function renderHome(config: AppConfig): string {
             <div class="detail-row"><span>Target</span><strong>${escapeHtml(endpointLabel(config.mcpUrl))}</strong></div>
             <div class="detail-row"><span>Model</span><strong>simple-open-source-edge-v1</strong></div>
             <div class="detail-row"><span>Auto cadence</span><strong>${escapeHtml(intervalLabel(config.autonomousIntervalMs))}</strong></div>
+            <div class="detail-row"><span>Browser cash</span><strong id="browser-cash-value">not loaded</strong></div>
           </div>
           <form id="api-key-form">
             <div class="field-stack">
@@ -707,8 +708,11 @@ export function renderHome(config: AppConfig): string {
     const apiKeyInput = document.querySelector('#api-key-input');
     const rememberKey = document.querySelector('#remember-key');
     const apiKeyStatus = document.querySelector('#api-key-status');
+    const browserCashValue = document.querySelector('#browser-cash-value');
     const apiKeyStorageKey = 'endpointarena:mcp-client-sample:api-key';
     const normalizeApiKey = (value) => value.replace(/\\s+/g, '').trim();
+    let accountRefreshTimer = 0;
+    let accountRefreshSeq = 0;
     const outputState = {
       account: { mode: 'human', value: 'Not loaded.' },
       result: { mode: 'human', value: 'Ready.' },
@@ -1060,6 +1064,7 @@ export function renderHome(config: AppConfig): string {
       const apiKey = currentApiKey();
       storeBrowserKey(apiKey);
       setApiKeyStatus();
+      scheduleAccountRefresh(options && options.immediate ? 0 : 650);
       if (!options || !options.announce) return;
       setState(resultState, 'Ready', 'good');
       showOutput('result', options.message || (apiKey ? 'Browser API key is active.' : 'Browser API key cleared.'));
@@ -1080,6 +1085,59 @@ export function renderHome(config: AppConfig): string {
       return payload;
     }
 
+    function resetBrowserAccount() {
+      accountRefreshSeq += 1;
+      window.clearTimeout(accountRefreshTimer);
+      browserCashValue.textContent = 'not loaded';
+      setState(accountState, 'Idle', 'neutral');
+      showOutput('account', 'Not loaded.');
+    }
+
+    function scheduleAccountRefresh(delay) {
+      window.clearTimeout(accountRefreshTimer);
+      const apiKey = currentApiKey();
+      if (!apiKey) {
+        resetBrowserAccount();
+        return;
+      }
+      if (apiKey.length < 12) {
+        accountRefreshSeq += 1;
+        browserCashValue.textContent = 'enter key';
+        setState(accountState, 'Idle', 'neutral');
+        showOutput('account', 'Enter an API key to load account.');
+        return;
+      }
+      browserCashValue.textContent = 'loading...';
+      setState(accountState, 'Working', 'warn');
+      accountRefreshTimer = window.setTimeout(() => {
+        void refreshBrowserAccount();
+      }, delay);
+    }
+
+    async function refreshBrowserAccount() {
+      const seq = accountRefreshSeq + 1;
+      accountRefreshSeq = seq;
+      const apiKey = currentApiKey();
+      if (!apiKey) {
+        resetBrowserAccount();
+        return;
+      }
+      try {
+        const payload = await request('/api/account');
+        if (seq !== accountRefreshSeq || apiKey !== currentApiKey()) return;
+        const account = asRecord(payload.account || payload);
+        const balances = asRecord(account.balances);
+        browserCashValue.textContent = formatMoneyValue(balances.cashUsd);
+        showOutput('account', account);
+        setState(accountState, 'Loaded', 'good');
+      } catch (error) {
+        if (seq !== accountRefreshSeq || apiKey !== currentApiKey()) return;
+        browserCashValue.textContent = 'unavailable';
+        showOutput('account', error);
+        setState(accountState, 'Error', 'bad');
+      }
+    }
+
     document.querySelector('#api-key-form').addEventListener('submit', (event) => {
       event.preventDefault();
       const apiKey = currentApiKey();
@@ -1097,7 +1155,7 @@ export function renderHome(config: AppConfig): string {
           return;
         }
         apiKeyInput.value = pasted;
-        activateBrowserKey({ announce: true, message: 'Browser API key pasted and active.' });
+        activateBrowserKey({ announce: true, immediate: true, message: 'Browser API key pasted and active.' });
         apiKeyInput.focus();
       } catch {
         setState(resultState, 'Ready', 'good');
@@ -1112,6 +1170,7 @@ export function renderHome(config: AppConfig): string {
       localStorage.removeItem(apiKeyStorageKey);
       sessionStorage.removeItem(apiKeyStorageKey);
       setApiKeyStatus();
+      resetBrowserAccount();
       setState(resultState, 'Ready', 'good');
       showOutput('result', 'Browser API key cleared.');
     });
@@ -1120,7 +1179,7 @@ export function renderHome(config: AppConfig): string {
     apiKeyInput.addEventListener('paste', () => {
       setTimeout(() => {
         apiKeyInput.value = currentApiKey();
-        activateBrowserKey({ announce: true, message: currentApiKey() ? 'Browser API key pasted and active.' : 'Browser API key cleared.' });
+        activateBrowserKey({ announce: true, immediate: true, message: currentApiKey() ? 'Browser API key pasted and active.' : 'Browser API key cleared.' });
       }, 0);
     });
     rememberKey.addEventListener('change', () => activateBrowserKey());
@@ -1196,6 +1255,7 @@ export function renderHome(config: AppConfig): string {
     loadBrowserKey();
     renderOutput('account');
     renderOutput('result');
+    if (currentApiKey()) scheduleAccountRefresh(0);
   </script>
 </body>
 </html>`
