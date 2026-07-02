@@ -65,6 +65,9 @@ export function renderHome(config: AppConfig): string {
       --night-line: #263335;
       --night-muted: #9aa7a3;
       --shadow: 0 18px 45px rgba(24, 34, 30, 0.08);
+      --grid-gap: 12px;
+      --left-column-fr: 0.92fr;
+      --right-column-fr: 1.08fr;
     }
     * { box-sizing: border-box; }
     html { min-width: 320px; }
@@ -132,8 +135,12 @@ export function renderHome(config: AppConfig): string {
     }
     .status-shelf {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 10px;
+      grid-template-columns:
+        minmax(0, var(--left-column-fr))
+        minmax(0, var(--left-column-fr))
+        minmax(0, var(--right-column-fr))
+        minmax(0, var(--right-column-fr));
+      gap: var(--grid-gap);
       margin: 18px 0;
     }
     .status-card, .panel {
@@ -162,10 +169,10 @@ export function renderHome(config: AppConfig): string {
     }
     .status-value {
       color: var(--ink);
-      font-size: 17px;
+      font-size: 16px;
       font-weight: 780;
       line-height: 1.2;
-      overflow-wrap: anywhere;
+      overflow-wrap: break-word;
     }
     .status-note {
       color: var(--muted);
@@ -175,8 +182,8 @@ export function renderHome(config: AppConfig): string {
     }
     .layout {
       display: grid;
-      grid-template-columns: minmax(340px, 0.92fr) minmax(360px, 1.08fr);
-      gap: 12px;
+      grid-template-columns: minmax(340px, var(--left-column-fr)) minmax(360px, var(--right-column-fr));
+      gap: var(--grid-gap);
       align-items: start;
     }
     .column {
