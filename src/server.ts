@@ -1,7 +1,12 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { URL } from 'node:url'
 import { AutonomousTrader } from './autonomousTrader.js'
-import { loadConfig, publicConfig, withApiKeyOverride } from './config.js'
+import {
+  loadConfig,
+  publicConfig,
+  withApiKeyOverride,
+  withAutonomousLimitOverrides,
+} from './config.js'
 import { publicErrorPayload } from './errors.js'
 import { renderHome } from './html.js'
 import {
@@ -104,7 +109,11 @@ async function route(request: IncomingMessage, response: ServerResponse) {
   }
 
   if (request.method === 'POST' && url.pathname === '/api/auto/run') {
-    const runner = requestApiKey ? new AutonomousTrader(requestConfig) : autonomousTrader
+    const body = await readBody(request)
+    const runConfig = withAutonomousLimitOverrides(requestConfig, body)
+    const runner = requestApiKey || runConfig.hasOverrides
+      ? new AutonomousTrader(runConfig.config)
+      : autonomousTrader
     sendJson(response, 200, {
       ok: true,
       autonomous: await runner.runOnce('manual'),

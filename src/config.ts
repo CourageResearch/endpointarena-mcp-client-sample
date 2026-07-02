@@ -1,3 +1,5 @@
+import { HttpError } from './errors.js'
+
 export type AppConfig = {
   mcpUrl: string
   apiKey: string
@@ -34,6 +36,15 @@ function parsePositiveNumber(value: string | undefined, fallback: number): numbe
   if (value == null || value.trim() === '') return fallback
   const parsed = Number.parseFloat(value)
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
+}
+
+function parseOptionalPositiveOverride(record: Record<string, unknown>, key: string): number | undefined {
+  if (!(key in record) || record[key] === undefined || record[key] === '') return undefined
+  const parsed = typeof record[key] === 'number' ? record[key] : Number(record[key])
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new HttpError(400, 'BAD_REQUEST', `${key} must be a positive number`)
+  }
+  return parsed
 }
 
 function parseNonNegativeInteger(value: string | undefined, fallback: number): number {
@@ -100,5 +111,30 @@ export function withApiKeyOverride(config: AppConfig, apiKey: string | null): Ap
   return {
     ...config,
     apiKey: trimmed,
+  }
+}
+
+export function withAutonomousLimitOverrides(
+  config: AppConfig,
+  overrides: unknown,
+): { config: AppConfig, hasOverrides: boolean } {
+  if (overrides == null) return { config, hasOverrides: false }
+  if (typeof overrides !== 'object' || Array.isArray(overrides)) {
+    throw new HttpError(400, 'BAD_REQUEST', 'Autonomous limit overrides must be a JSON object')
+  }
+
+  const record = overrides as Record<string, unknown>
+  const autonomousMaxTradeUsd = parseOptionalPositiveOverride(record, 'autonomousMaxTradeUsd')
+  const autonomousDailySpendLimitUsd = parseOptionalPositiveOverride(record, 'autonomousDailySpendLimitUsd')
+  const hasOverrides = autonomousMaxTradeUsd !== undefined || autonomousDailySpendLimitUsd !== undefined
+
+  if (!hasOverrides) return { config, hasOverrides: false }
+  return {
+    config: {
+      ...config,
+      ...(autonomousMaxTradeUsd === undefined ? {} : { autonomousMaxTradeUsd }),
+      ...(autonomousDailySpendLimitUsd === undefined ? {} : { autonomousDailySpendLimitUsd }),
+    },
+    hasOverrides: true,
   }
 }

@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { loadConfig, publicConfig, withApiKeyOverride } from '../src/config.js'
+import {
+  loadConfig,
+  publicConfig,
+  withApiKeyOverride,
+  withAutonomousLimitOverrides,
+} from '../src/config.js'
 
 test('loadConfig defaults to production MCP and safe submit settings', () => {
   const config = loadConfig({})
@@ -72,4 +77,34 @@ test('withApiKeyOverride swaps API keys without mutating the base config', () =>
   assert.equal(base.apiKey, 'ea_s4_server_key')
   assert.equal(overridden.apiKey, 'ea_s4_browser_key')
   assert.equal(withApiKeyOverride(base, '').apiKey, 'ea_s4_server_key')
+})
+
+test('withAutonomousLimitOverrides applies per-run autonomous limits', () => {
+  const base = loadConfig({
+    AUTONOMOUS_MAX_TRADE_USD: '1',
+    AUTONOMOUS_DAILY_SPEND_LIMIT_USD: '3',
+  })
+  const result = withAutonomousLimitOverrides(base, {
+    autonomousMaxTradeUsd: '2.5',
+    autonomousDailySpendLimitUsd: 9,
+  })
+
+  assert.equal(result.hasOverrides, true)
+  assert.equal(result.config.autonomousMaxTradeUsd, 2.5)
+  assert.equal(result.config.autonomousDailySpendLimitUsd, 9)
+  assert.equal(base.autonomousMaxTradeUsd, 1)
+  assert.equal(base.autonomousDailySpendLimitUsd, 3)
+})
+
+test('withAutonomousLimitOverrides rejects invalid autonomous limits', () => {
+  const base = loadConfig({})
+
+  assert.throws(
+    () => withAutonomousLimitOverrides(base, { autonomousMaxTradeUsd: 0 }),
+    /autonomousMaxTradeUsd must be a positive number/,
+  )
+  assert.throws(
+    () => withAutonomousLimitOverrides(base, []),
+    /Autonomous limit overrides must be a JSON object/,
+  )
 })

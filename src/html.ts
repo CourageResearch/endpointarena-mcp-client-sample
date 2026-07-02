@@ -306,6 +306,12 @@ export function renderHome(config: AppConfig): string {
       display: grid;
       gap: 12px;
     }
+    .limit-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 12px;
+    }
     .key-row {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
@@ -554,7 +560,7 @@ export function renderHome(config: AppConfig): string {
       .panel-title-row {
         align-items: flex-start;
       }
-      .status-shelf, .quote-grid, .key-row {
+      .status-shelf, .quote-grid, .key-row, .limit-grid {
         grid-template-columns: 1fr;
       }
       .key-actions button {
@@ -602,7 +608,7 @@ export function renderHome(config: AppConfig): string {
       <section class="status-card ${autoTone}">
         <span class="status-label">Autonomous mode</span>
         <strong class="status-value">${escapeHtml(autoStatus)}</strong>
-        <span class="status-note">${escapeHtml(moneyLabel(config.autonomousMaxTradeUsd))} max, ${escapeHtml(moneyLabel(config.autonomousDailySpendLimitUsd))} daily</span>
+        <span class="status-note" id="autonomous-limit-note">${escapeHtml(moneyLabel(config.autonomousMaxTradeUsd))} max, ${escapeHtml(moneyLabel(config.autonomousDailySpendLimitUsd))} daily</span>
       </section>
     </div>
 
@@ -636,6 +642,14 @@ export function renderHome(config: AppConfig): string {
             </label>
             <p id="api-key-status" class="inline-status neutral">Browser key not set</p>
           </form>
+          <div class="limit-grid" aria-label="Autonomous trading limits">
+            <label>Max trade USDC
+              <input id="auto-max-trade-usd" type="number" min="0.000001" step="0.000001" value="${escapeHtml(config.autonomousMaxTradeUsd)}">
+            </label>
+            <label>Daily limit USDC
+              <input id="auto-daily-limit-usd" type="number" min="0.000001" step="0.000001" value="${escapeHtml(config.autonomousDailySpendLimitUsd)}">
+            </label>
+          </div>
           <div class="action-row">
             <button type="button" id="run-smoke">Run Smoke</button>
             <button type="button" class="secondary" id="load-markets">Load Markets</button>
@@ -709,7 +723,15 @@ export function renderHome(config: AppConfig): string {
     const rememberKey = document.querySelector('#remember-key');
     const apiKeyStatus = document.querySelector('#api-key-status');
     const browserCashValue = document.querySelector('#browser-cash-value');
+    const autonomousLimitNote = document.querySelector('#autonomous-limit-note');
+    const autoMaxTradeUsdInput = document.querySelector('#auto-max-trade-usd');
+    const autoDailySpendLimitUsdInput = document.querySelector('#auto-daily-limit-usd');
     const apiKeyStorageKey = 'endpointarena:mcp-client-sample:api-key';
+    const autoLimitStorageKey = 'endpointarena:mcp-client-sample:auto-limits';
+    const defaultAutoLimits = {
+      autonomousMaxTradeUsd: ${JSON.stringify(config.autonomousMaxTradeUsd)},
+      autonomousDailySpendLimitUsd: ${JSON.stringify(config.autonomousDailySpendLimitUsd)},
+    };
     const normalizeApiKey = (value) => value.replace(/\\s+/g, '').trim();
     let accountRefreshTimer = 0;
     let accountRefreshSeq = 0;
@@ -1031,6 +1053,63 @@ export function renderHome(config: AppConfig): string {
       renderOutput(target);
     }
 
+    function currentAutoLimits() {
+      const maxTrade = Number(autoMaxTradeUsdInput.value);
+      const dailyLimit = Number(autoDailySpendLimitUsdInput.value);
+      const maxValid = Number.isFinite(maxTrade) && maxTrade > 0;
+      const dailyValid = Number.isFinite(dailyLimit) && dailyLimit > 0;
+      autoMaxTradeUsdInput.setCustomValidity(maxValid ? '' : 'Max trade must be greater than 0.');
+      autoMaxTradeUsdInput.setAttribute('aria-invalid', maxValid ? 'false' : 'true');
+      autoDailySpendLimitUsdInput.setCustomValidity(dailyValid ? '' : 'Daily limit must be greater than 0.');
+      autoDailySpendLimitUsdInput.setAttribute('aria-invalid', dailyValid ? 'false' : 'true');
+      if (!maxValid) return { ok: false, message: 'Max trade must be greater than 0.' };
+      if (!dailyValid) return { ok: false, message: 'Daily limit must be greater than 0.' };
+      return {
+        ok: true,
+        limits: {
+          autonomousMaxTradeUsd: maxTrade,
+          autonomousDailySpendLimitUsd: dailyLimit,
+        },
+      };
+    }
+
+    function updateAutoLimitNote() {
+      const parsed = currentAutoLimits();
+      if (!parsed.ok) {
+        autonomousLimitNote.textContent = parsed.message;
+        return parsed;
+      }
+      autonomousLimitNote.textContent = formatMoneyValue(parsed.limits.autonomousMaxTradeUsd) +
+        ' max, ' + formatMoneyValue(parsed.limits.autonomousDailySpendLimitUsd) + ' daily';
+      return parsed;
+    }
+
+    function saveAutoLimitsIfValid() {
+      const parsed = updateAutoLimitNote();
+      if (!parsed.ok) return parsed;
+      localStorage.setItem(autoLimitStorageKey, JSON.stringify(parsed.limits));
+      return parsed;
+    }
+
+    function loadAutoLimits() {
+      const saved = localStorage.getItem(autoLimitStorageKey);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (parsed && typeof parsed === 'object') {
+            if (Number(parsed.autonomousMaxTradeUsd) > 0) autoMaxTradeUsdInput.value = String(parsed.autonomousMaxTradeUsd);
+            if (Number(parsed.autonomousDailySpendLimitUsd) > 0) autoDailySpendLimitUsdInput.value = String(parsed.autonomousDailySpendLimitUsd);
+          }
+        } catch {
+          localStorage.removeItem(autoLimitStorageKey);
+        }
+      } else {
+        autoMaxTradeUsdInput.value = String(defaultAutoLimits.autonomousMaxTradeUsd);
+        autoDailySpendLimitUsdInput.value = String(defaultAutoLimits.autonomousDailySpendLimitUsd);
+      }
+      updateAutoLimitNote();
+    }
+
     function setApiKeyStatus() {
       const isSet = Boolean(currentApiKey());
       apiKeyStatus.textContent = isSet ? 'Browser key active' : 'Browser key not set';
@@ -1214,16 +1293,31 @@ export function renderHome(config: AppConfig): string {
     });
 
     document.querySelector('#run-auto').addEventListener('click', async () => {
+      const parsedLimits = saveAutoLimitsIfValid();
+      if (!parsedLimits.ok) {
+        setState(resultState, 'Error', 'bad');
+        showOutput('result', { ok: false, error: { code: 'BAD_REQUEST', message: parsedLimits.message } });
+        autoMaxTradeUsdInput.reportValidity();
+        autoDailySpendLimitUsdInput.reportValidity();
+        return;
+      }
       setState(resultState, 'Working', 'warn');
       showOutput('result', 'Running autonomous model...');
       try {
-        showOutput('result', await request('/api/auto/run', { method: 'POST' }));
+        showOutput('result', await request('/api/auto/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(parsedLimits.limits),
+        }));
         setState(resultState, 'Complete', 'good');
       } catch (error) {
         showOutput('result', error);
         setState(resultState, 'Error', 'bad');
       }
     });
+
+    autoMaxTradeUsdInput.addEventListener('input', saveAutoLimitsIfValid);
+    autoDailySpendLimitUsdInput.addEventListener('input', saveAutoLimitsIfValid);
 
     document.querySelector('#quote-form').addEventListener('submit', async (event) => {
       event.preventDefault();
@@ -1252,6 +1346,7 @@ export function renderHome(config: AppConfig): string {
       });
     });
 
+    loadAutoLimits();
     loadBrowserKey();
     renderOutput('account');
     renderOutput('result');
